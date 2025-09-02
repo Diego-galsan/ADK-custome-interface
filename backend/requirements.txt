@@ -1,0 +1,7 @@
+# Most dependencies should already be available in your ARIA environment
+# Only install if needed:
+# fastapi
+# uvicorn[standard] 
+# sse-starlette
+# websockets
+# httpx  # For making HTTP requests to remote agent

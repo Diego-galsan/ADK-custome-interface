@@ -77,22 +77,29 @@ export class AgentService {
                   }
                   const chunk = decoder.decode(value, {stream: true});
                   lastData += chunk;
-                  try {
-                    const lines = lastData.split(/\r?\n/).filter(
-                        (line) => line.startsWith('data:'));
-                    lines.forEach((line) => {
+                  console.log('SSE chunk received:', chunk);
+                  
+                  // Split by lines and process each complete message
+                  const lines = lastData.split(/\r?\n/);
+                  // Keep the last potentially incomplete line
+                  lastData = lines.pop() || '';
+                  
+                  lines.forEach((line) => {
+                    if (line.startsWith('data: ')) {
                       const data = line.replace(/^data:\s*/, '');
-                      JSON.parse(data);
-                      self.zone.run(() => observer.next(data));
-                    });
-                    lastData = '';
-                  } catch (e) {
-                    // the data is not a valid json, it could be an incomplete
-                    // chunk. we ignore it and wait for the next chunk.
-                    if (e instanceof SyntaxError) {
-                      read();
+                      console.log('SSE data after cleanup:', data);
+                      if (data.trim() && data !== '') {
+                        try {
+                          // Validate it's proper JSON before passing to observer
+                          const parsedData = JSON.parse(data);
+                          console.log('SSE parsed data:', parsedData);
+                          self.zone.run(() => observer.next(data));
+                        } catch (parseError) {
+                          console.warn('Failed to parse SSE data as JSON:', data, parseError);
+                        }
+                      }
                     }
-                  }
+                  });
                   read();  // Read the next chunk
                 })
                 .catch((err) => {

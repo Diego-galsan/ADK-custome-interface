@@ -405,6 +405,20 @@ export class ChatComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
+    // Create session if it doesn't exist
+    if (!this.sessionId || this.sessionId === '') {
+      console.log('Creating new session...');
+      await new Promise<void>((resolve) => {
+        this.sessionService.createSession(this.userId, this.appName)
+          .subscribe((res) => {
+            this.sessionId = res.sessionId;
+            console.log('Created session with ID:', this.sessionId);
+            this.changeDetectorRef.detectChanges(); // Update UI to show session ID
+            resolve();
+          });
+      });
+    }
+
     // Add user message
     if (!!this.userInput.trim()) {
       this.messages.push({role: 'user', text: this.userInput});
@@ -437,16 +451,19 @@ export class ChatComponent implements OnInit, AfterViewInit, OnDestroy {
     this.streamingTextMessage = null;
     this.agentService.runSse(req).subscribe({
       next: async (chunk) => {
+        console.log('Chat component received SSE chunk:', chunk);
         if (chunk.startsWith('{"error"')) {
           this.openSnackBar(chunk, 'OK');
           return;
         }
         const chunkJson = JSON.parse(chunk);
+        console.log('Chat component parsed chunk:', chunkJson);
         if (chunkJson.error) {
           this.openSnackBar(chunkJson.error, 'OK');
           return;
         }
         if (chunkJson.content) {
+          console.log('Processing content parts:', chunkJson.content.parts);
           for (let part of chunkJson.content.parts) {
             index += 1;
             this.processPart(chunkJson, part, index);
